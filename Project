@@ -37,14 +37,20 @@ local SilentAimEnabled = false
 local TargetPart = "Head"
 local FPSBoostEnabled = false
 local NoClipEnabled = false
+local TeamCheckEnabled = false
 
 -- Helper Functions
+local function IsEnemy(player)
+    if not TeamCheckEnabled then return true end
+    return player.Team ~= LocalPlayer.Team
+end
+
 local function GetClosestOpponent()
     local closestPlayer = nil
     local shortestDistance = math.huge
 
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+        if player ~= LocalPlayer and IsEnemy(player) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
             local distance = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
             if distance < shortestDistance then
                 closestPlayer = player
@@ -150,6 +156,14 @@ CombatTab:CreateDropdown({
     CurrentOption = "Head",
     Callback = function(Option)
         TargetPart = Option
+    end
+})
+
+CombatTab:CreateToggle({
+    Name = "Team Check",
+    CurrentValue = false,
+    Callback = function(Value)
+        TeamCheckEnabled = Value
     end
 })
 
