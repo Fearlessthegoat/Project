@@ -3,7 +3,6 @@ local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Window = Rayfield:CreateWindow({
@@ -28,21 +27,25 @@ local CombatTab = Window:CreateTab("🔫 Combat", 4483362458)
 local MiscTab = Window:CreateTab("📚 Misc", 4483362458)
 
 -- Add Label
-CombatTab:CreateLabel("Arsenal Script V1.0")
+CombatTab:CreateLabel("Arsenal Script V1.2")
 
 -- Variables for functionality
 local AutoTeleportEnabled = false
 local AimbotEnabled = false
 local SilentAimEnabled = false
+local LockToEnemies = false -- Toggle for locking to enemies
 local TargetPart = "Head"
+local AimbotRange = 50 -- Default range for Aimbot
 local FPSBoostEnabled = false
 local NoClipEnabled = false
-local TeamCheckEnabled = false
 
 -- Helper Functions
 local function IsEnemy(player)
-    if not TeamCheckEnabled then return true end
-    return player.Team ~= LocalPlayer.Team
+    -- Customize this logic based on your game's team system
+    if player.Team ~= LocalPlayer.Team then
+        return true
+    end
+    return false
 end
 
 local function GetClosestOpponent()
@@ -50,31 +53,24 @@ local function GetClosestOpponent()
     local shortestDistance = math.huge
 
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and IsEnemy(player) and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
-            local distance = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-            if distance < shortestDistance then
-                closestPlayer = player
-                shortestDistance = distance
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+            local isValidTarget = true
+
+            if LockToEnemies then
+                isValidTarget = IsEnemy(player)
+            end
+
+            if isValidTarget then
+                local distance = (player.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                if distance < shortestDistance and distance <= AimbotRange then -- Check range here
+                    closestPlayer = player
+                    shortestDistance = distance
+                end
             end
         end
     end
 
     return closestPlayer
-end
-
-local function TeleportToPlayer(targetPlayer)
-    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character:SetPrimaryPartCFrame(targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -2))
-    end
-end
-
-local function AutoShoot(targetPlayer)
-    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild(TargetPart) then
-        local gun = LocalPlayer.Backpack:FindFirstChildOfClass("Tool") or LocalPlayer.Character:FindFirstChildOfClass("Tool")
-        if gun and gun:FindFirstChild("FireEvent") then
-            gun.FireEvent:FireServer({targetPlayer.Character[TargetPart].Position})
-        end
-    end
 end
 
 local function AimbotLock(targetPlayer)
@@ -111,22 +107,6 @@ end
 
 -- Combat Toggles
 CombatTab:CreateToggle({
-    Name = "Auto Teleport",
-    CurrentValue = false,
-    Callback = function(Value)
-        AutoTeleportEnabled = Value
-        while AutoTeleportEnabled do
-            local TargetPlayer = GetClosestOpponent()
-            if TargetPlayer then
-                TeleportToPlayer(TargetPlayer)
-                AutoShoot(TargetPlayer)
-            end
-            wait(0.1) -- Adjust delay for smoother performance
-        end
-    end
-})
-
-CombatTab:CreateToggle({
     Name = "Aimbot",
     CurrentValue = false,
     Callback = function(Value)
@@ -134,11 +114,29 @@ CombatTab:CreateToggle({
         RunService.RenderStepped:Connect(function()
             if AimbotEnabled then
                 local ClosestPlayer = GetClosestOpponent()
-                if ClosestPlayer and (ClosestPlayer.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude <= 50 then
+                if ClosestPlayer then
                     AimbotLock(ClosestPlayer)
                 end
             end
         end)
+    end
+})
+
+CombatTab:CreateToggle({
+    Name = "Lock to Enemies Only",
+    CurrentValue = false,
+    Callback = function(Value)
+        LockToEnemies = Value
+    end
+})
+
+CombatTab:CreateSlider({
+    Name = "Aimbot Range",
+    Range = {10, 500}, -- Slider range: minimum 10, maximum 500
+    Increment = 10, -- Slider step
+    CurrentValue = 50, -- Default value
+    Callback = function(Value)
+        AimbotRange = Value -- Update the range variable
     end
 })
 
@@ -156,14 +154,6 @@ CombatTab:CreateDropdown({
     CurrentOption = "Head",
     Callback = function(Option)
         TargetPart = Option
-    end
-})
-
-CombatTab:CreateToggle({
-    Name = "Team Check",
-    CurrentValue = false,
-    Callback = function(Value)
-        TeamCheckEnabled = Value
     end
 })
 
@@ -195,7 +185,7 @@ MiscTab:CreateButton({
 
 Rayfield:Notify({
     Title = "Script Loaded",
-    Content = "CodeHub Arsenal Script V1.0 loaded successfully!",
+    Content = "CodeHub Arsenal Script V1.2 loaded successfully!",
     Duration = 5,
     Image = 4483362458 -- Replace with a custom image ID if desired
 })
